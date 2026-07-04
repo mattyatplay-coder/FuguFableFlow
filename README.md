@@ -26,7 +26,7 @@ Most voice tools are optimized for broad assistant workflows. FuguFableFlow is i
 - release speech/audio resources when dictation stops
 - stay small under memory pressure
 
-On the original development machine, FuguFableFlow idled around 16 MB in Activity Monitor after launch. That number will vary by macOS version, hardware, signing mode, and active features, but the design goal is explicit: avoid a large always-on memory footprint.
+FuguFableFlow is designed for a small idle footprint, not a fixed memory number. In testing, fresh idle launches have ranged from the teens of MB to the low tens of MB depending on hardware, permissions, audio devices, and which macOS frameworks have been loaded. The design goal is explicit: avoid a large always-on memory footprint.
 
 ## Features
 
