@@ -1,6 +1,9 @@
 <div align="center">
 
-![FuguFableFlow](Assets/demo.webp)
+<picture>
+  <source media="(prefers-reduced-motion: reduce)" srcset="Assets/banner.png">
+  <img src="Assets/demo.webp" alt="FuguFableFlow">
+</picture>
 
 **Speak words. Get text. Pretend the name was strategy.**
 
