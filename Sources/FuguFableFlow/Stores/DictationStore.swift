@@ -6,7 +6,7 @@ import SwiftUI
 final class DictationStore: ObservableObject {
     private enum RecordingMode {
         case dictation
-        case command(selectedText: String)
+        case command
     }
 
     @Published private(set) var isRecording = false
@@ -318,8 +318,7 @@ final class DictationStore: ObservableObject {
         commandModeStarting = true
         Task {
             statusText = "Command Mode"
-            let selectedText = await textInsertionService.captureSelectedText()
-            await startRecording(mode: .command(selectedText: selectedText))
+            await startRecording(mode: .command)
             commandModeStarting = false
             startCommandModeReleaseMonitor()
         }
@@ -468,9 +467,12 @@ final class DictationStore: ObservableObject {
                 _ = await textInsertionService.pressEnter()
                 statusText = parsed.text.isEmpty ? "Pressed Enter" : statusText
             }
-        case .command(let selectedText):
+        case .command:
             statusText = "Command Mode processing"
             do {
+                DiagnosticLog.app.info("commandMode captureSelectedText begin")
+                let selectedText = await textInsertionService.captureSelectedText()
+                DiagnosticLog.app.info("commandMode transform begin provider=\(self.commandModeProvider.rawValue, privacy: .public) model=\(self.commandModeModel, privacy: .public) selectedLength=\(selectedText.count, privacy: .public) commandLength=\(text.count, privacy: .public)")
                 let service = CommandTransformService(
                     provider: commandModeProvider,
                     apiKey: commandModeAPIKey,
@@ -481,17 +483,19 @@ final class DictationStore: ObservableObject {
                     command: text
                 )
                 guard !transformed.isEmpty else {
+                    DiagnosticLog.app.info("commandMode transform empty")
                     statusText = "Command Mode returned no text"
                     isErrorState = true
                     return
                 }
+                DiagnosticLog.app.info("commandMode transform success outputLength=\(transformed.count, privacy: .public)")
                 let result = await textInsertionService.insert(
                     transformed,
                     restoreClipboard: restoreClipboardAfterPaste
                 )
                 handleInsertResult(result)
             } catch {
-                DiagnosticLog.app.error("commandMode failed")
+                DiagnosticLog.app.error("commandMode failed provider=\(self.commandModeProvider.rawValue, privacy: .public) model=\(self.commandModeModel, privacy: .public)")
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(text, forType: .string)
                 statusText = error.localizedDescription

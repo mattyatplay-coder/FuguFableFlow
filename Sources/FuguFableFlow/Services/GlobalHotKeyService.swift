@@ -8,7 +8,7 @@ final class GlobalHotKeyService {
     nonisolated(unsafe) private var eventHandlerRef: EventHandlerRef?
     nonisolated(unsafe) private var eventTap: CFMachPort?
     nonisolated(unsafe) private var eventTapSource: CFRunLoopSource?
-    nonisolated(unsafe) private var globalFlagsMonitor: Any?
+    nonisolated(unsafe) private var commandModeFlagsMonitor: Any?
     private var action: (() -> Void)?
     private var pressAction: (() -> Void)?
     private var releaseAction: (() -> Void)?
@@ -24,7 +24,7 @@ final class GlobalHotKeyService {
     func register(shortcut: HotKeyShortcut, action: @escaping () -> Void) -> OSStatus {
         DiagnosticLog.hotKey.info("GlobalHotKeyService.register custom keyCode=\(shortcut.keyCode, privacy: .public) modifiers=\(shortcut.modifiers, privacy: .public)")
         unregisterEventTap()
-        unregisterGlobalFlagsMonitor()
+        installCommandModeFlagsMonitorIfNeeded()
         if !isHandlerInstalled {
             let status = installHandler()
             guard status == noErr else { return status }
@@ -65,6 +65,7 @@ final class GlobalHotKeyService {
         commandModePressAction = onPress
         commandModeReleaseAction = onRelease
         isCommandModeActive = false
+        installCommandModeFlagsMonitorIfNeeded()
     }
 
     private func registerRightCommandPushToTalk(
@@ -74,6 +75,7 @@ final class GlobalHotKeyService {
     ) -> Bool {
         DiagnosticLog.hotKey.info("registerRightFunctionRightCommand begin")
         unregisterHotKey()
+        unregisterCommandModeFlagsMonitor()
         pressAction = onPress
         releaseAction = onRelease
         functionKeyDown = false
@@ -129,12 +131,14 @@ final class GlobalHotKeyService {
             userInfo: userInfo
         ) else {
             DiagnosticLog.hotKey.error("registerRightFunctionRightCommand tapCreate failed")
+            installCommandModeFlagsMonitorIfNeeded()
             return false
         }
 
         guard let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0) else {
             CFMachPortInvalidate(tap)
             DiagnosticLog.hotKey.error("registerRightFunctionRightCommand runLoopSource failed")
+            installCommandModeFlagsMonitorIfNeeded()
             return false
         }
 
@@ -142,8 +146,7 @@ final class GlobalHotKeyService {
         eventTapSource = source
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
-        installGlobalFlagsMonitor()
-        DiagnosticLog.hotKey.info("registerRightCommandPushToTalk success requiresFunction=\(requiresFunction, privacy: .public) eventTap=true globalMonitor=\(self.globalFlagsMonitor != nil, privacy: .public)")
+        DiagnosticLog.hotKey.info("registerRightCommandPushToTalk success requiresFunction=\(requiresFunction, privacy: .public) eventTap=true commandModeFallbackMonitor=false")
         return true
     }
 
@@ -182,13 +185,19 @@ final class GlobalHotKeyService {
         }
     }
 
-    private func installGlobalFlagsMonitor() {
-        unregisterGlobalFlagsMonitor()
-        globalFlagsMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+    private func installCommandModeFlagsMonitorIfNeeded() {
+        guard eventTap == nil,
+              commandModeFlagsMonitor == nil,
+              commandModePressAction != nil,
+              commandModeReleaseAction != nil else {
+            return
+        }
+        commandModeFlagsMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             Task { @MainActor in
-                self?.handleFlagsChanged(event: event, source: "NSEvent")
+                self?.handleFlagsChanged(event: event, source: "NSEventCommandMode")
             }
         }
+        DiagnosticLog.hotKey.info("commandMode fallback monitor installed")
     }
 
     private func handleFlagsChanged(event: NSEvent, source: String) {
@@ -241,6 +250,8 @@ final class GlobalHotKeyService {
             commandModeReleaseAction?()
         }
 
+        guard source != "NSEventCommandMode" else { return }
+
         let shouldRecord = rightCommandDown && (!requiresFunctionForPushToTalk || functionKeyDown)
         if shouldCommandModeRecord {
             return
@@ -273,18 +284,18 @@ final class GlobalHotKeyService {
         }
     }
 
-    private func unregisterGlobalFlagsMonitor() {
-        if let globalFlagsMonitor {
-            NSEvent.removeMonitor(globalFlagsMonitor)
-            self.globalFlagsMonitor = nil
+    private func unregisterCommandModeFlagsMonitor() {
+        if let commandModeFlagsMonitor {
+            NSEvent.removeMonitor(commandModeFlagsMonitor)
+            self.commandModeFlagsMonitor = nil
         }
     }
 
     deinit {
         unregisterHotKey()
         unregisterEventTap()
-        if let globalFlagsMonitor {
-            NSEvent.removeMonitor(globalFlagsMonitor)
+        if let commandModeFlagsMonitor {
+            NSEvent.removeMonitor(commandModeFlagsMonitor)
         }
         if let eventHandlerRef {
             RemoveEventHandler(eventHandlerRef)
