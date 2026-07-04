@@ -8,7 +8,7 @@
 [![macOS](https://img.shields.io/badge/macOS-14%2B-black?logo=apple&logoColor=white)](https://www.apple.com/macos)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-![FuguFableFlow demo](Assets/demo.gif)
+![FuguFableFlow demo](Assets/demo.webp)
 
 </div>
 
