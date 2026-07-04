@@ -114,6 +114,10 @@ If paste does not work, open System Settings and confirm FuguFableFlow is enable
 
 Spotify in Chrome requires Chrome's `View > Developer > Allow JavaScript from Apple Events` setting before FuguFableFlow can pause or resume the web player.
 
+## Troubleshooting
+
+If automatic paste stops working after rebuilding or reinstalling an ad-hoc signed copy, remove the old FuguFableFlow entry from System Settings > Privacy & Security > Accessibility, then add the new `/Applications/FuguFableFlow.app` back and enable it. macOS can treat each ad-hoc rebuild as a different privacy identity even when the app name and bundle ID look unchanged.
+
 ## Shortcuts
 
 Default dictation shortcut:
