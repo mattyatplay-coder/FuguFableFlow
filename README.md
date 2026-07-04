@@ -1,77 +1,74 @@
-# FuguFableFlow
+<div align="center">
 
-FuguFableFlow is a tiny macOS menu-bar dictation app built for people who want speech-to-text without a heavy desktop assistant sitting in memory all day.
+![FuguFableFlow](Assets/banner.png)
 
-It is built from scratch in Swift and SwiftUI. It is not affiliated with, endorsed by, or based on code/assets from any commercial dictation product.
+**Speak words. Get text. Pretend the name was strategy.**
 
-![FuguFableFlow icon](Resources/FuguFableFlow.png)
+[![Swift](https://img.shields.io/badge/Swift-6.0-orange?logo=swift&logoColor=white)](https://swift.org)
+[![macOS](https://img.shields.io/badge/macOS-14%2B-black?logo=apple&logoColor=white)](https://www.apple.com/macos)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-The app icon was generated with GPT Image 2 and is approved for publishing with this project.
+</div>
+
+---
+
+A tiny macOS menu-bar dictation app for people who want speech-to-text without a heavy desktop assistant sitting in memory all day.
+
+Built from scratch in Swift and SwiftUI. Not affiliated with any commercial dictation product — this one just types what you say and then gets out of the way.
 
 ## The name
 
-`FuguFableFlow` is what happens when you ask a product meeting to name a tiny dictation app after three coffees and too many tabs open.
+`FuguFableFlow` is what happens when you ask a product meeting to name a dictation app after three coffees and too many tabs open.
 
-It is named from the most buzzwordy, clickbaity, clout-chasing, trendjacking keywords currently contaminating our feeds, plus "Flow," because apparently every productivity tool must now imply enlightenment through keyboard shortcuts.
+It's assembled from the most buzzwordy, clickbaity, trendjacking keywords currently contaminating our feeds, plus "Flow" — because every productivity tool must now imply enlightenment through keyboard shortcuts.
 
 The name is maximalist. The app is not.
 
-## Why this exists
+## What it does
 
-Most voice tools are optimized for broad assistant workflows. FuguFableFlow is intentionally narrower:
+Hold Right Command. Talk. Release. Whatever you said is now text in whatever app you were pointing at.
 
-- live only in the menu bar
-- start listening only when you ask it to
-- paste the result into the current app
-- release speech/audio resources when dictation stops
-- stay small under memory pressure
+That's the whole product. The rest is polish:
 
-FuguFableFlow is designed for a small idle footprint, not a fixed memory number. In testing, fresh idle launches have ranged from the teens of MB to the low tens of MB depending on hardware, permissions, audio devices, and which macOS frameworks have been loaded. The design goal is explicit: avoid a large always-on memory footprint.
+- Menu-bar-only. No Dock icon, no windows in your face.
+- Push-to-talk on Right Command by default. Reconfigurable in Settings.
+- Auto-paste into the current app when you release the key.
+- "Copy last transcript" fallback for when macOS decides Accessibility permission is a mystery.
+- Smart formatting for spoken punctuation, line breaks, and the little false-starts every human makes.
+- A custom dictionary, so it stops guessing "Kubernetes" as "cubanetics."
+- Coding command mode — "new line," "open paren," "fat arrow," "press enter."
+- Optional Command Mode for AI text transforms (off by default; more on that below).
+- Optional music muting for Music, Spotify, and Spotify tabs in Chrome.
+- Configurable start/stop tones and notification volume.
 
-## Features
+## Why the memory thing
 
-- Menu-bar-only macOS app with no Dock icon or main window.
-- Push-to-talk dictation with Right Command hold by default.
-- Configurable dictation shortcuts in Settings.
-- Automatic paste on stop, with optional clipboard restoration.
-- Copy Last Transcript fallback when paste is blocked by macOS permissions.
-- Best-available microphone selection helper for built-in mics, USB interfaces, and virtual devices.
-- Smart Formatting for spoken punctuation, line breaks, simple false starts, list formatting, and writing style cleanup.
-- Custom dictionary for names, project terms, libraries, commands, and unusual words.
-- Coding command recognition for terms like new line, open parenthesis, fat arrow, and press enter.
-- Command Mode for transforming selected text or generating text at the cursor with Off, OpenRouter, Hugging Face, OpenAI, or Local Ollama providers.
-- Optional music muting that pauses Music, Spotify, Spotify tabs in Chrome, and attempts system-output mute for browser players.
-- Configurable start/stop notification sounds with preview and notification volume.
-- Memory pressure monitor that clears idle state and stops recording on critical pressure.
-- Custom app icon and menu-bar logo.
+Most voice tools are optimized to sit resident and volunteer help. This one is optimized to shut up until pressed. In practice, that means:
 
-## Memory-first design
+- Speech recognition is instantiated only while you're actually recording.
+- Audio engine, recognition request, and recognition task all get released on stop.
+- No transcript history is kept.
+- No window, no webview, no Electron shell, no background assistant UI.
+- A memory-pressure monitor drops recording state when the system starts complaining.
 
-FuguFableFlow keeps its memory profile low by avoiding work when idle:
+Fresh idle launches usually land in the low tens of MB, depending on hardware, permissions, audio devices, and which frameworks macOS has already paged in. The point isn't hitting a specific number — it's not being the app using 400 MB to do nothing.
 
-- Speech recognition services are created only while recording.
-- Audio engine, recognition request, and recognition task are released on stop.
-- Transcript preview is capped.
-- No long-term transcript history is retained.
-- There is no main app window, webview, Electron shell, or background assistant UI.
-- A memory-pressure monitor reacts to system pressure and cleans up recording state.
-
-To inspect memory locally:
+Check for yourself:
 
 ```bash
 ps -o pid,rss,command -p "$(pgrep -x FuguFableFlow)"
 ```
 
-`rss` is reported in KB. Activity Monitor is usually easier for a quick human check.
+(`rss` is in KB. Activity Monitor is easier if you don't want to do math.)
 
 ## Requirements
 
 - macOS 14 or newer
-- Swift 6 toolchain / Xcode command line tools
+- Swift 6 toolchain (Xcode or command line tools)
 - Microphone permission
 - Speech Recognition permission
-- Accessibility permission for automatic paste into other apps
-- Optional: provider API key for hosted Command Mode providers
+- Accessibility permission — for pasting into other apps
+- Optional: API key if you turn on a hosted Command Mode provider
 
 ## Build and run
 
@@ -81,19 +78,15 @@ cd FuguFableFlow
 ./script/build_and_run.sh
 ```
 
-The script builds a signed local app bundle at:
+The script builds a signed local app bundle at `dist/FuguFableFlow.app` using ad-hoc signing by default.
 
-```text
-dist/FuguFableFlow.app
-```
-
-By default it uses ad-hoc signing. To use a specific Apple signing identity:
+To use a real Apple signing identity:
 
 ```bash
 FUGUFABLEFLOW_CODESIGN_IDENTITY="Apple Development: Your Name (TEAMID)" ./script/build_and_run.sh
 ```
 
-To install the built app manually:
+To install manually:
 
 ```bash
 rm -rf /Applications/FuguFableFlow.app
@@ -101,82 +94,57 @@ ditto dist/FuguFableFlow.app /Applications/FuguFableFlow.app
 open /Applications/FuguFableFlow.app
 ```
 
-## Permissions
-
-macOS may ask for permissions in different places:
-
-- Microphone: allows audio capture.
-- Speech Recognition: allows Apple's speech recognizer to transcribe audio.
-- Accessibility: allows FuguFableFlow to paste text into the active app.
-- Automation: allows optional control of Music, Spotify, or Chrome for music muting.
-
-If paste does not work, open System Settings and confirm FuguFableFlow is enabled under Accessibility.
-
-Spotify in Chrome requires Chrome's `View > Developer > Allow JavaScript from Apple Events` setting before FuguFableFlow can pause or resume the web player.
-
-## Troubleshooting
-
-If automatic paste stops working after rebuilding or reinstalling an ad-hoc signed copy, remove the old FuguFableFlow entry from System Settings > Privacy & Security > Accessibility, then add the new `/Applications/FuguFableFlow.app` back and enable it. macOS can treat each ad-hoc rebuild as a different privacy identity even when the app name and bundle ID look unchanged.
-
 ## Shortcuts
 
-Default dictation shortcut:
+| Action | Default |
+|---|---|
+| Push-to-talk dictation | Right Command (hold) |
+| Command Mode | Control + Option + Command (hold) |
 
-```text
-Right Command hold
-```
+The dictation shortcut is reconfigurable in Settings.
 
-Command Mode shortcut:
+## Command Mode (optional)
 
-```text
-Control + Option + Command hold
-```
+Off by default. When on, it can:
 
-You can change the dictation shortcut in Settings.
+- Replace highlighted text with a cleaned-up or transformed version.
+- Generate text at the cursor when nothing is selected.
+- Follow spoken instructions like "make this more concise" or "turn this into a bulleted list."
 
-## Command Mode
+Provider options:
 
-Command Mode is optional and is off by default. It can:
+- **Off** — does nothing. Default.
+- **OpenRouter** — hosted, cheap, lots of free routing options.
+- **Hugging Face** — hosted open models via HF Inference Providers.
+- **OpenAI** — hosted, standard chat completions.
+- **Local Ollama** — talks to an already-running Ollama server at `localhost`. The app doesn't start Ollama or bundle a model; that part's on you.
 
-- replace highlighted text with a cleaned-up or transformed version
-- generate text at the cursor when nothing is selected
-- follow spoken instructions like "make this more concise" or "turn this into a bulleted list"
+Hosted providers receive the selected text and your spoken command — nothing else. Provider keys live in the macOS Keychain. Don't commit them.
 
-Provider choices:
+Local Ollama keeps Command Mode requests on-device, but the Ollama model process runs in its own memory outside FuguFableFlow. If it's using 8 GB, that's Ollama, not this app.
 
-- Off: no AI provider is called.
-- OpenRouter: hosted API with low-cost and free model routing options.
-- Hugging Face: hosted open-model inference through Hugging Face Inference Providers.
-- OpenAI: hosted OpenAI chat completions.
-- Local Ollama: calls an already-running local Ollama server at `localhost`; FuguFableFlow does not start or bundle a model.
+## Permissions, and where macOS hides them
 
-Hosted providers receive the selected text and spoken command for Command Mode. Local Ollama keeps Command Mode text on your machine, but the model process uses its own memory outside FuguFableFlow.
+- **Microphone** — obvious.
+- **Speech Recognition** — lets Apple's recognizer actually transcribe.
+- **Accessibility** — required to paste into other apps.
+- **Automation** — only needed if you want music-muting for Music, Spotify, or Chrome.
 
-Provider API keys are stored in macOS Keychain. Do not commit API keys to the repository.
+If paste stops working, it's almost always Accessibility. If you rebuilt or reinstalled an ad-hoc signed copy, macOS treats every rebuild as a new privacy identity even when the app name and bundle ID look identical. Remove the old `FuguFableFlow` entry from **System Settings → Privacy & Security → Accessibility**, add the new `/Applications/FuguFableFlow.app` back, and enable it.
 
-## Privacy notes
+Spotify-in-Chrome muting also needs Chrome's **View → Developer → Allow JavaScript from Apple Events** setting turned on before FuguFableFlow can pause the web player.
 
-- FuguFableFlow has no backend service, analytics service, or telemetry service.
-- Normal dictation uses Apple's Speech framework. Audio/transcription processing follows Apple's Speech Recognition behavior on the user's Mac and OS version.
-- Command Mode is off by default.
-- Hosted Command Mode providers send only the selected text and spoken instruction to the provider the user chooses.
-- Local Ollama sends Command Mode requests to an already-running local Ollama server and does not use a hosted provider.
-- FuguFableFlow does not keep transcript history in the app.
-- The app stores settings in local macOS preferences and provider keys in Keychain.
+## Privacy
+
+- No backend. No analytics. No telemetry.
+- Normal dictation uses Apple's Speech framework and follows Apple's speech-recognition behavior for your Mac and OS version.
+- Command Mode is off by default. When on and pointed at a hosted provider, only the selected text and your spoken instruction are sent.
+- Local Ollama keeps Command Mode requests local.
+- No transcript history is stored in the app.
+- Settings live in local macOS preferences. Provider keys live in Keychain.
 - Diagnostic logs avoid transcript content and record operational status, lengths, permissions, and errors.
 
 See [SECURITY.md](SECURITY.md) for the current privacy/security audit summary.
-
-## Memory and AI providers
-
-FuguFableFlow's lightweight memory profile applies to the app itself. Hosted AI providers keep model memory off-device. Local Ollama keeps data local, but the Ollama model process can use gigabytes of memory depending on the model. FuguFableFlow does not auto-start Ollama and does not bundle model weights.
-
-## Public repo checklist
-
-Before publishing broadly:
-
-- Replace the placeholder GitHub clone URL once the public repo exists.
-- Test a fresh clone on a second Mac.
 
 ## License
 
