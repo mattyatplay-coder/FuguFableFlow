@@ -172,16 +172,16 @@ final class DictationStore: ObservableObject {
         statusText = "Copied transcript"
     }
 
-    func useBuiltInMicrophone() {
-        DiagnosticLog.audio.info("useBuiltInMicrophone begin")
+    func usePreferredMicrophone() {
+        DiagnosticLog.audio.info("usePreferredMicrophone begin")
         do {
-            let device = try audioInputDeviceService.preferBuiltInMicrophone()
-            DiagnosticLog.audio.info("useBuiltInMicrophone selected id=\(device.id, privacy: .public) name=\(device.name, privacy: .public)")
+            let device = try audioInputDeviceService.preferredInputDevice()
+            DiagnosticLog.audio.info("usePreferredMicrophone selected id=\(device.id, privacy: .public) name=\(device.name, privacy: .public)")
             audioInputText = "Audio Input: \(device.name)"
             statusText = "Using \(device.name)"
             isErrorState = false
         } catch {
-            DiagnosticLog.audio.error("useBuiltInMicrophone failed error=\(error.localizedDescription, privacy: .public)")
+            DiagnosticLog.audio.error("usePreferredMicrophone failed error=\(error.localizedDescription, privacy: .public)")
             showError(error.localizedDescription)
         }
     }
@@ -350,9 +350,9 @@ final class DictationStore: ObservableObject {
             if muteMusicWhileDictating {
                 mediaDuckingService.begin()
             }
-            DiagnosticLog.audio.info("startRecording preferBuiltInMicrophone begin")
-            let device = try audioInputDeviceService.preferBuiltInMicrophone()
-            DiagnosticLog.audio.info("startRecording preferBuiltInMicrophone selected id=\(device.id, privacy: .public) name=\(device.name, privacy: .public)")
+            DiagnosticLog.audio.info("startRecording preferredInputDevice begin")
+            let device = try audioInputDeviceService.preferredInputDevice()
+            DiagnosticLog.audio.info("startRecording preferredInputDevice selected id=\(device.id, privacy: .public) name=\(device.name, privacy: .public)")
             audioInputText = "Audio Input: \(device.name)"
             statusText = "Using \(device.name)"
             DiagnosticLog.speech.info("startRecording requestPermissions begin")

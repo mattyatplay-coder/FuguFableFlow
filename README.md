@@ -35,7 +35,7 @@ On the original development machine, FuguFableFlow idled around 16 MB in Activit
 - Configurable dictation shortcuts in Settings.
 - Automatic paste on stop, with optional clipboard restoration.
 - Copy Last Transcript fallback when paste is blocked by macOS permissions.
-- Built-in microphone selection helper.
+- Best-available microphone selection helper for built-in mics, USB interfaces, and virtual devices.
 - Smart Formatting for spoken punctuation, line breaks, simple false starts, list formatting, and writing style cleanup.
 - Custom dictionary for names, project terms, libraries, commands, and unusual words.
 - Coding command recognition for terms like new line, open parenthesis, fat arrow, and press enter.

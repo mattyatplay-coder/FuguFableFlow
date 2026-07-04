@@ -240,9 +240,9 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
 
                 Button {
-                    store.useBuiltInMicrophone()
+                    store.usePreferredMicrophone()
                 } label: {
-                    Label("Use Built-in Microphone", systemImage: "mic.and.signal.meter")
+                    Label("Use Best Available Microphone", systemImage: "mic.and.signal.meter")
                 }
             } header: {
                 Text("Audio Input")

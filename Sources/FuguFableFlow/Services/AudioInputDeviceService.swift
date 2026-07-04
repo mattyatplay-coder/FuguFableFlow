@@ -14,15 +14,12 @@ struct AudioInputDevice: Identifiable, Equatable {
 
 enum AudioInputDeviceError: LocalizedError {
     case noInputDevices
-    case noBuiltInMicrophone
     case coreAudio(OSStatus)
 
     var errorDescription: String? {
         switch self {
         case .noInputDevices:
             "No microphone input devices were found."
-        case .noBuiltInMicrophone:
-            "No built-in microphone input was found."
         case .coreAudio(let status):
             "Audio input setup failed: \(status)"
         }
@@ -81,19 +78,33 @@ final class AudioInputDeviceService {
         }
     }
 
-    func preferBuiltInMicrophone() throws -> AudioInputDevice {
-        DiagnosticLog.audio.info("preferBuiltInMicrophone begin")
+    func preferredInputDevice() throws -> AudioInputDevice {
+        DiagnosticLog.audio.info("preferredInputDevice begin")
         let devices = try inputDevices()
-        guard let builtIn = devices.first(where: \.isBuiltIn) else {
-            DiagnosticLog.audio.error("preferBuiltInMicrophone no built-in device")
-            throw AudioInputDeviceError.noBuiltInMicrophone
+
+        if let builtIn = devices.first(where: \.isBuiltIn) {
+            try setDefaultInputDevice(builtIn.id)
+            DiagnosticLog.audio.info("preferredInputDevice selected builtIn id=\(builtIn.id, privacy: .public) name=\(builtIn.name, privacy: .public)")
+            return AudioInputDevice(
+                id: builtIn.id,
+                name: builtIn.name,
+                isBuiltIn: true,
+                isDefault: true
+            )
         }
-        try setDefaultInputDevice(builtIn.id)
-        DiagnosticLog.audio.info("preferBuiltInMicrophone set default id=\(builtIn.id, privacy: .public) name=\(builtIn.name, privacy: .public)")
+
+        if let currentDefault = devices.first(where: \.isDefault) {
+            DiagnosticLog.audio.info("preferredInputDevice selected currentDefault id=\(currentDefault.id, privacy: .public) name=\(currentDefault.name, privacy: .public)")
+            return currentDefault
+        }
+
+        let firstAvailable = devices[0]
+        try setDefaultInputDevice(firstAvailable.id)
+        DiagnosticLog.audio.info("preferredInputDevice selected firstAvailable id=\(firstAvailable.id, privacy: .public) name=\(firstAvailable.name, privacy: .public)")
         return AudioInputDevice(
-            id: builtIn.id,
-            name: builtIn.name,
-            isBuiltIn: true,
+            id: firstAvailable.id,
+            name: firstAvailable.name,
+            isBuiltIn: firstAvailable.isBuiltIn,
             isDefault: true
         )
     }
