@@ -75,7 +75,7 @@ struct SettingsView: View {
             } header: {
                 Text("Audio Feedback")
             } footer: {
-                Text("Music muting pauses Music or Spotify while recording and resumes only apps FuguFableFlow paused.")
+                Text("Music muting pauses Music or Spotify and attempts to mute system output for browser players. Some USB interfaces do not expose software mute.")
             }
 
             Section {

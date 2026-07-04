@@ -40,7 +40,7 @@ On the original development machine, FuguFableFlow idled around 16 MB in Activit
 - Custom dictionary for names, project terms, libraries, commands, and unusual words.
 - Coding command recognition for terms like new line, open parenthesis, fat arrow, and press enter.
 - Command Mode for transforming selected text or generating text at the cursor with Off, OpenRouter, Hugging Face, OpenAI, or Local Ollama providers.
-- Optional music ducking for Music and Spotify while recording.
+- Optional music muting that pauses Music/Spotify and attempts system-output mute for browser players.
 - Configurable start/stop notification sounds with preview and notification volume.
 - Memory pressure monitor that clears idle state and stops recording on critical pressure.
 - Custom app icon and menu-bar logo.

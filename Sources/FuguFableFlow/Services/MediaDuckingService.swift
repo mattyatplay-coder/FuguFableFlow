@@ -1,8 +1,17 @@
 import AppKit
+import CoreAudio
 import Foundation
 
 @MainActor
 final class MediaDuckingService {
+    private struct SystemOutputState {
+        let deviceID: AudioDeviceID
+        let wasMuted: UInt32?
+        let volume: Float32?
+        let changedMute: Bool
+        let changedVolume: Bool
+    }
+
     private enum MediaApp: String, CaseIterable {
         case music = "com.apple.Music"
         case spotify = "com.spotify.client"
@@ -36,6 +45,7 @@ final class MediaDuckingService {
     }
 
     private var pausedApps = Set<MediaApp>()
+    private var systemOutputState: SystemOutputState?
 
     func begin() {
         pausedApps.removeAll()
@@ -45,9 +55,11 @@ final class MediaDuckingService {
                 DiagnosticLog.media.info("paused media app=\(app.displayName, privacy: .public)")
             }
         }
+        systemOutputState = muteSystemOutput()
     }
 
     func end() {
+        restoreSystemOutput()
         for app in pausedApps where isRunning(bundleIdentifier: app.rawValue) {
             _ = runAppleScript(app.resumeScript)
             DiagnosticLog.media.info("resumed media app=\(app.displayName, privacy: .public)")
@@ -67,5 +79,195 @@ final class MediaDuckingService {
             return nil
         }
         return result?.stringValue
+    }
+
+    private func muteSystemOutput() -> SystemOutputState? {
+        guard let deviceID = defaultOutputDeviceID(), deviceID != kAudioObjectUnknown else {
+            DiagnosticLog.media.info("system output mute skipped no default output")
+            return nil
+        }
+
+        let priorMute = getUInt32(
+            deviceID: deviceID,
+            selector: kAudioDevicePropertyMute,
+            scope: kAudioDevicePropertyScopeOutput
+        )
+        if priorMute == 1 {
+            DiagnosticLog.media.info("system output already muted deviceID=\(deviceID, privacy: .public)")
+            return nil
+        }
+
+        if isSettable(
+            deviceID: deviceID,
+            selector: kAudioDevicePropertyMute,
+            scope: kAudioDevicePropertyScopeOutput
+        ) {
+            if priorMute != 1,
+               setUInt32(
+                   1,
+                   deviceID: deviceID,
+                   selector: kAudioDevicePropertyMute,
+                   scope: kAudioDevicePropertyScopeOutput
+               ) {
+                DiagnosticLog.media.info("system output muted deviceID=\(deviceID, privacy: .public)")
+                return SystemOutputState(
+                    deviceID: deviceID,
+                    wasMuted: priorMute,
+                    volume: nil,
+                    changedMute: true,
+                    changedVolume: false
+                )
+            }
+        }
+
+        let priorVolume = getFloat32(
+            deviceID: deviceID,
+            selector: kAudioDevicePropertyVolumeScalar,
+            scope: kAudioDevicePropertyScopeOutput
+        )
+        if let priorVolume,
+           isSettable(
+               deviceID: deviceID,
+               selector: kAudioDevicePropertyVolumeScalar,
+               scope: kAudioDevicePropertyScopeOutput
+           ),
+           priorVolume > 0,
+           setFloat32(
+               0,
+               deviceID: deviceID,
+               selector: kAudioDevicePropertyVolumeScalar,
+               scope: kAudioDevicePropertyScopeOutput
+           ) {
+            DiagnosticLog.media.info("system output volume lowered deviceID=\(deviceID, privacy: .public)")
+            return SystemOutputState(
+                deviceID: deviceID,
+                wasMuted: priorMute,
+                volume: priorVolume,
+                changedMute: false,
+                changedVolume: true
+            )
+        }
+
+        DiagnosticLog.media.info("system output mute unsupported deviceID=\(deviceID, privacy: .public)")
+        return nil
+    }
+
+    private func restoreSystemOutput() {
+        guard let state = systemOutputState else { return }
+        defer { systemOutputState = nil }
+
+        if state.changedVolume, let volume = state.volume {
+            _ = setFloat32(
+                volume,
+                deviceID: state.deviceID,
+                selector: kAudioDevicePropertyVolumeScalar,
+                scope: kAudioDevicePropertyScopeOutput
+            )
+            DiagnosticLog.media.info("system output volume restored deviceID=\(state.deviceID, privacy: .public)")
+        }
+
+        if state.changedMute, let wasMuted = state.wasMuted {
+            _ = setUInt32(
+                wasMuted,
+                deviceID: state.deviceID,
+                selector: kAudioDevicePropertyMute,
+                scope: kAudioDevicePropertyScopeOutput
+            )
+            DiagnosticLog.media.info("system output mute restored deviceID=\(state.deviceID, privacy: .public)")
+        }
+    }
+
+    private func defaultOutputDeviceID() -> AudioDeviceID? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var deviceID = AudioDeviceID()
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        let status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address,
+            0,
+            nil,
+            &size,
+            &deviceID
+        )
+        return status == noErr ? deviceID : nil
+    }
+
+    private func isSettable(
+        deviceID: AudioDeviceID,
+        selector: AudioObjectPropertySelector,
+        scope: AudioObjectPropertyScope
+    ) -> Bool {
+        var address = propertyAddress(selector: selector, scope: scope)
+        guard AudioObjectHasProperty(deviceID, &address) else { return false }
+        var settable = DarwinBoolean(false)
+        let status = AudioObjectIsPropertySettable(deviceID, &address, &settable)
+        return status == noErr && settable.boolValue
+    }
+
+    private func getUInt32(
+        deviceID: AudioDeviceID,
+        selector: AudioObjectPropertySelector,
+        scope: AudioObjectPropertyScope
+    ) -> UInt32? {
+        var address = propertyAddress(selector: selector, scope: scope)
+        guard AudioObjectHasProperty(deviceID, &address) else { return nil }
+        var value: UInt32 = 0
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        let status = AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, &value)
+        return status == noErr ? value : nil
+    }
+
+    private func setUInt32(
+        _ value: UInt32,
+        deviceID: AudioDeviceID,
+        selector: AudioObjectPropertySelector,
+        scope: AudioObjectPropertyScope
+    ) -> Bool {
+        var address = propertyAddress(selector: selector, scope: scope)
+        var mutableValue = value
+        let size = UInt32(MemoryLayout<UInt32>.size)
+        let status = AudioObjectSetPropertyData(deviceID, &address, 0, nil, size, &mutableValue)
+        return status == noErr
+    }
+
+    private func getFloat32(
+        deviceID: AudioDeviceID,
+        selector: AudioObjectPropertySelector,
+        scope: AudioObjectPropertyScope
+    ) -> Float32? {
+        var address = propertyAddress(selector: selector, scope: scope)
+        guard AudioObjectHasProperty(deviceID, &address) else { return nil }
+        var value: Float32 = 0
+        var size = UInt32(MemoryLayout<Float32>.size)
+        let status = AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, &value)
+        return status == noErr ? value : nil
+    }
+
+    private func setFloat32(
+        _ value: Float32,
+        deviceID: AudioDeviceID,
+        selector: AudioObjectPropertySelector,
+        scope: AudioObjectPropertyScope
+    ) -> Bool {
+        var address = propertyAddress(selector: selector, scope: scope)
+        var mutableValue = value
+        let size = UInt32(MemoryLayout<Float32>.size)
+        let status = AudioObjectSetPropertyData(deviceID, &address, 0, nil, size, &mutableValue)
+        return status == noErr
+    }
+
+    private func propertyAddress(
+        selector: AudioObjectPropertySelector,
+        scope: AudioObjectPropertyScope
+    ) -> AudioObjectPropertyAddress {
+        AudioObjectPropertyAddress(
+            mSelector: selector,
+            mScope: scope,
+            mElement: kAudioObjectPropertyElementMain
+        )
     }
 }
