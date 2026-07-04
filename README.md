@@ -1,14 +1,12 @@
 <div align="center">
 
-![FuguFableFlow](Assets/banner.png)
+![FuguFableFlow](Assets/demo.webp)
 
 **Speak words. Get text. Pretend the name was strategy.**
 
 [![Swift](https://img.shields.io/badge/Swift-6.0-orange?logo=swift&logoColor=white)](https://swift.org)
 [![macOS](https://img.shields.io/badge/macOS-14%2B-black?logo=apple&logoColor=white)](https://www.apple.com/macos)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-
-![FuguFableFlow demo](Assets/demo.webp)
 
 </div>
 
