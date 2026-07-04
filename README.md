@@ -61,6 +61,20 @@ ps -o pid,rss,command -p "$(pgrep -x FuguFableFlow)"
 
 (`rss` is in KB. Activity Monitor is easier if you don't want to do math.)
 
+## Install
+
+Grab the latest `.zip` from the [**Releases**](https://github.com/mattyatplay-coder/FuguFableFlow/releases/latest) page — a universal build that runs on both Apple Silicon and Intel Macs.
+
+```bash
+# unzip, move to Applications, and clear the quarantine flag
+unzip ~/Downloads/FuguFableFlow-*.zip -d ~/Downloads
+xattr -dr com.apple.quarantine ~/Downloads/FuguFableFlow.app
+mv ~/Downloads/FuguFableFlow.app /Applications/
+open /Applications/FuguFableFlow.app
+```
+
+The build is ad-hoc signed, not notarized, so macOS Gatekeeper will block a normal double-click. The `xattr` line above clears the quarantine flag; alternatively, right-click the app → **Open** the first time. Prefer to build it yourself? See [Build and run](#build-and-run).
+
 ## Requirements
 
 - macOS 14 or newer
