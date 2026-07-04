@@ -12,6 +12,11 @@ final class MediaDuckingService {
         let changedVolume: Bool
     }
 
+    private struct ChromeTabReference: Hashable {
+        let windowIndex: Int
+        let tabIndex: Int
+    }
+
     private enum MediaApp: String, CaseIterable {
         case music = "com.apple.Music"
         case spotify = "com.spotify.client"
@@ -45,25 +50,30 @@ final class MediaDuckingService {
     }
 
     private var pausedApps = Set<MediaApp>()
+    private var pausedChromeSpotifyTabs = Set<ChromeTabReference>()
     private var systemOutputState: SystemOutputState?
 
     func begin() {
         pausedApps.removeAll()
+        pausedChromeSpotifyTabs.removeAll()
         for app in MediaApp.allCases where isRunning(bundleIdentifier: app.rawValue) {
             if runAppleScript(app.pauseScript) == "paused" {
                 pausedApps.insert(app)
                 DiagnosticLog.media.info("paused media app=\(app.displayName, privacy: .public)")
             }
         }
+        pausedChromeSpotifyTabs = pauseChromeSpotifyTabs()
         systemOutputState = muteSystemOutput()
     }
 
     func end() {
         restoreSystemOutput()
+        resumeChromeSpotifyTabs()
         for app in pausedApps where isRunning(bundleIdentifier: app.rawValue) {
             _ = runAppleScript(app.resumeScript)
             DiagnosticLog.media.info("resumed media app=\(app.displayName, privacy: .public)")
         }
+        pausedChromeSpotifyTabs.removeAll()
         pausedApps.removeAll()
     }
 
@@ -79,6 +89,73 @@ final class MediaDuckingService {
             return nil
         }
         return result?.stringValue
+    }
+
+    private func pauseChromeSpotifyTabs() -> Set<ChromeTabReference> {
+        guard isRunning(bundleIdentifier: "com.google.Chrome") else { return [] }
+        let script = """
+        with timeout of 2 seconds
+            tell application "Google Chrome"
+                set AppleScript's text item delimiters to linefeed
+                set pausedTabs to {}
+                repeat with windowIndex from 1 to count of windows
+                    repeat with tabIndex from 1 to count of tabs of window windowIndex
+                        set tabRef to tab tabIndex of window windowIndex
+                        set tabURL to URL of tabRef as string
+                        if tabURL contains "open.spotify.com" then
+                            set pauseResult to execute javascript "(() => { const button = document.querySelector('[data-testid=\\\"control-button-playpause\\\"]'); const label = (button?.getAttribute('aria-label') || '').toLowerCase(); if (label.includes('pause')) { button.click(); return 'paused'; } return 'unchanged'; })();" in tabRef
+                            if pauseResult is "paused" then
+                                set end of pausedTabs to ((windowIndex as string) & ":" & (tabIndex as string))
+                            end if
+                        end if
+                    end repeat
+                end repeat
+                return pausedTabs as text
+            end tell
+        end timeout
+        """
+
+        guard let result = runAppleScript(script), !result.isEmpty else { return [] }
+        let refs = Set(result
+            .split(separator: "\n")
+            .compactMap { value -> ChromeTabReference? in
+                let parts = value.split(separator: ":")
+                guard parts.count == 2,
+                      let windowIndex = Int(parts[0]),
+                      let tabIndex = Int(parts[1]) else {
+                    return nil
+                }
+                return ChromeTabReference(windowIndex: windowIndex, tabIndex: tabIndex)
+            })
+        if !refs.isEmpty {
+            DiagnosticLog.media.info("paused chrome spotify tabs count=\(refs.count, privacy: .public)")
+        }
+        return refs
+    }
+
+    private func resumeChromeSpotifyTabs() {
+        guard isRunning(bundleIdentifier: "com.google.Chrome") else { return }
+        for tab in pausedChromeSpotifyTabs {
+            let script = """
+            with timeout of 2 seconds
+                tell application "Google Chrome"
+                    if (count of windows) >= \(tab.windowIndex) then
+                        if (count of tabs of window \(tab.windowIndex)) >= \(tab.tabIndex) then
+                            set tabRef to tab \(tab.tabIndex) of window \(tab.windowIndex)
+                            set tabURL to URL of tabRef as string
+                            if tabURL contains "open.spotify.com" then
+                                execute javascript "(() => { const button = document.querySelector('[data-testid=\\\"control-button-playpause\\\"]'); const label = (button?.getAttribute('aria-label') || '').toLowerCase(); if (label.includes('play')) { button.click(); return 'resumed'; } return 'unchanged'; })();" in tabRef
+                            end if
+                        end if
+                    end if
+                end tell
+            end timeout
+            """
+            _ = runAppleScript(script)
+        }
+        if !pausedChromeSpotifyTabs.isEmpty {
+            DiagnosticLog.media.info("resumed chrome spotify tabs count=\(self.pausedChromeSpotifyTabs.count, privacy: .public)")
+        }
     }
 
     private func muteSystemOutput() -> SystemOutputState? {

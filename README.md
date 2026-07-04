@@ -40,7 +40,7 @@ On the original development machine, FuguFableFlow idled around 16 MB in Activit
 - Custom dictionary for names, project terms, libraries, commands, and unusual words.
 - Coding command recognition for terms like new line, open parenthesis, fat arrow, and press enter.
 - Command Mode for transforming selected text or generating text at the cursor with Off, OpenRouter, Hugging Face, OpenAI, or Local Ollama providers.
-- Optional music muting that pauses Music/Spotify and attempts system-output mute for browser players.
+- Optional music muting that pauses Music, Spotify, Spotify tabs in Chrome, and attempts system-output mute for browser players.
 - Configurable start/stop notification sounds with preview and notification volume.
 - Memory pressure monitor that clears idle state and stops recording on critical pressure.
 - Custom app icon and menu-bar logo.
@@ -108,8 +108,11 @@ macOS may ask for permissions in different places:
 - Microphone: allows audio capture.
 - Speech Recognition: allows Apple's speech recognizer to transcribe audio.
 - Accessibility: allows FuguFableFlow to paste text into the active app.
+- Automation: allows optional control of Music, Spotify, or Chrome for music muting.
 
 If paste does not work, open System Settings and confirm FuguFableFlow is enabled under Accessibility.
+
+Spotify in Chrome requires Chrome's `View > Developer > Allow JavaScript from Apple Events` setting before FuguFableFlow can pause or resume the web player.
 
 ## Shortcuts
 
