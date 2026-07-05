@@ -161,12 +161,16 @@ FuguFableFlow will try to figure out:
 
 - what kind of prompt you want — image, video, music, speech, editing, etc.
 - which generation model you named — Seedance, LTX, Wan, Flux, GPT Image, Suno, and friends
-- whether any local Prompt Guide snippets are useful
+- whether any synced Hugging Face or local Prompt Guide snippets are useful
 - whether to use a hosted provider, local Ollama, or the built-in no-provider template
 
-The memory rule still applies: it does not load your whole prompt-guide library into RAM, and it does not load model weights. Guide folders are scanned as lightweight metadata, then small text snippets are read only when you actually ask for a prompt. Local model-weight folders are filename references only, for people who want the app to know what's available without becoming the thing that runs it.
+The memory rule still applies: it does not bundle or load your whole prompt-guide library into RAM, and it does not load model weights. Remote guides are synced from a Hugging Face Dataset repo into Application Support, then searched as capped Markdown snippets. Local guide folders are optional for private notes or authoring. Local model-weight folders are filename references only, for people who want the app to know what's available without becoming the thing that runs it.
 
 Hosted Prompt Builder requests send only the selected text, spoken instruction, and capped local guide excerpts to the provider you chose in Command Mode. Provider Off still works; it just uses the local template and skips the paid brain.
+
+For vision prompts, copy an image first — right-click `Copy Image`, `Cmd+C` on an image file, or copy a screenshot. Then highlight your rough text and say something like "turn this into a Seedance prompt using the clipboard image." FuguFableFlow downsamples the clipboard image, sends it only for that request, and discards it after the prompt is built.
+
+Want to add more default guides over time? Use the low-effort authoring workflow in [`prompt-guides/`](prompt-guides/): copy the template, write a Markdown guide, run the publish script, and let the manifest do the bookkeeping. Full research exports can stay under `prompt-guides/sources/`; the publish script excludes them from the public guide bucket.
 
 ## Permissions, and where macOS hides them
 
@@ -185,6 +189,7 @@ Spotify-in-Chrome muting also needs Chrome's **View → Developer → Allow Java
 - Normal dictation uses Apple's Speech framework and follows Apple's speech-recognition behavior for your Mac and OS version.
 - Command Mode is off by default. When on and pointed at a hosted provider, only the selected text and your spoken instruction are sent.
 - Prompt Builder is off-by-default provider-wise too: it reuses your Command Mode provider choice, caps guide snippets, and never uploads model weights.
+- Vision Prompt Builder uses a copied clipboard image only when the spoken command asks for it. No screen scraping, no app guessing.
 - Local Ollama keeps Command Mode requests local.
 - No transcript history is stored in the app.
 - Settings live in local macOS preferences. Provider keys live in Keychain.

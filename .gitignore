@@ -9,3 +9,4 @@ DerivedData/
 .env
 .env.*
 marketing/
+prompt-guides/sources/

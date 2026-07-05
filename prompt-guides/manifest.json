@@ -1,0 +1,157 @@
+{
+  "generatedAt": "2026-07-05T05:12:18Z",
+  "guides": [
+    {
+      "aliases": [
+        "flux 1 dev",
+        "flux.1 dev",
+        "flux dev",
+        "flux one dev"
+      ],
+      "bytes": 3074,
+      "displayName": "Flux.1 Dev",
+      "id": "flux-1-dev",
+      "modality": "image",
+      "path": "guides/image/flux-1-dev.md",
+      "sha256": "6db8c819358e9a324879cff5fb78c57b69cdc2f26c82f2028038381484899126",
+      "summary": "Natural-language Flux.1 Dev prompt guidance for cinematic image generation, lighting, materials, color, and positive constraint phrasing.",
+      "tasks": [
+        "text-to-image",
+        "image-editing"
+      ]
+    },
+    {
+      "aliases": [
+        "flux 2 klein",
+        "flux.2 klein",
+        "flux2 klein",
+        "flux klein"
+      ],
+      "bytes": 3005,
+      "displayName": "Flux.2 Klein",
+      "id": "flux-2-klein",
+      "modality": "image",
+      "path": "guides/image/flux-2-klein.md",
+      "sha256": "0ffe5bd85e6f17a98d671f6d500dd4edb795d760190f1faf240dd681fa1dfe43",
+      "summary": "Fast flowing-prose prompt guidance for FLUX.2 Klein 4B and 9B variants, including reference-image roles and low-step settings.",
+      "tasks": [
+        "text-to-image",
+        "image-editing"
+      ]
+    },
+    {
+      "aliases": [
+        "krea",
+        "krea 2",
+        "krea two",
+        "krea turbo",
+        "krea 2 turbo"
+      ],
+      "bytes": 17296,
+      "displayName": "Krea 2",
+      "id": "krea-2",
+      "modality": "image",
+      "path": "guides/image/krea-2/guide.md",
+      "sha256": "344cb3e8839cac97ae319bf6d59689f546382708e470e98d450370092f727632",
+      "summary": "Use for Krea 2 image prompts with natural language, strong visual composition, faithful prompt expansion, and practical text rendering guidance.",
+      "tasks": [
+        "text-to-image",
+        "image-editing"
+      ]
+    },
+    {
+      "aliases": [
+        "z image turbo",
+        "z-image turbo",
+        "zimage turbo",
+        "z image"
+      ],
+      "bytes": 3085,
+      "displayName": "Z-Image Turbo",
+      "id": "z-image-turbo",
+      "modality": "image",
+      "path": "guides/image/z-image-turbo.md",
+      "sha256": "b4944d2a0b308318f9e8d9f463896037f43d663cb1180a6b93ec7a9362022e5d",
+      "summary": "Positive-only Z-Image Turbo prompt guidance for fast few-step image generation, text rendering, and safety/quality constraints.",
+      "tasks": [
+        "text-to-image",
+        "image-editing"
+      ]
+    },
+    {
+      "aliases": [
+        "ace-step",
+        "ace step",
+        "ace-step 1.5",
+        "ace music"
+      ],
+      "bytes": 2973,
+      "displayName": "ACE-Step 1.5",
+      "id": "ace-step-1.5",
+      "modality": "music",
+      "path": "guides/music/ace-step-1.5.md",
+      "sha256": "6c21180446b846407178a490fd58d3ee77d8d7f7e71ef6e9e97f7b8470835f8c",
+      "summary": "Local open-source music generation guidance for ACE-Step 1.5 text-to-music, remix, repaint, layer, extract, and completion workflows.",
+      "tasks": [
+        "text-to-music"
+      ]
+    },
+    {
+      "aliases": [
+        "suno",
+        "suno 5.5",
+        "suno v5.5",
+        "suno music"
+      ],
+      "bytes": 3048,
+      "displayName": "Suno V5.5",
+      "id": "suno-v5.5",
+      "modality": "music",
+      "path": "guides/music/suno-v5.5/guide.md",
+      "sha256": "ffdc23e6babfd43ee5274538b580f6a7bf08045a6c89b7b7e37fb97d23f7be29",
+      "summary": "Structured Suno music prompt guidance for genre, vocals, instrumentation, production, lyrics, and quality controls.",
+      "tasks": [
+        "text-to-music"
+      ]
+    },
+    {
+      "aliases": [
+        "ltx",
+        "ltx 2.3",
+        "ltx two point three",
+        "ltx video"
+      ],
+      "bytes": 3152,
+      "displayName": "LTX-2.3",
+      "id": "ltx-2.3",
+      "modality": "video",
+      "path": "guides/video/ltx-2.3.md",
+      "sha256": "1404c59c16453fabb4d73a15e635eadf87dd0c6cf8d2573a85c99d3d7e4ca006",
+      "summary": "Cinematic Prompt Relay guidance for LTX-2.3 video prompts with timecoded scenes, camera motion, sound, and temporal consistency.",
+      "tasks": [
+        "text-to-video",
+        "image-to-video"
+      ]
+    },
+    {
+      "aliases": [
+        "seedance",
+        "seedance 2",
+        "seedance two",
+        "dreamina seedance"
+      ],
+      "bytes": 1194,
+      "displayName": "Seedance 2",
+      "id": "seedance-2",
+      "modality": "video",
+      "path": "guides/video/seedance-2.md",
+      "sha256": "83488365c8e1be467c3a1eafa9b17e2102f0a3d1f0b2e493be2ecb4b2d5d2120",
+      "summary": "Use for cinematic image-to-video or text-to-video prompts with clear subject, camera, and motion direction.",
+      "tasks": [
+        "image-to-video",
+        "text-to-video"
+      ]
+    }
+  ],
+  "schemaVersion": 1
+}

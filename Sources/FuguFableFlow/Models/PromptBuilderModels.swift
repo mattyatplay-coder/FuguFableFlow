@@ -59,6 +59,25 @@ struct PromptBuilderCommand: Equatable, Sendable {
             || normalized.contains("text to video")
             || normalized.contains("music brief")
     }
+
+    var requestsClipboardImageReference: Bool {
+        let normalized = PromptBuilderModelRegistry.normalized(originalCommand)
+        let phrases = [
+            "clipboard image",
+            "copied image",
+            "reference image",
+            "image reference",
+            "using the image",
+            "use the image",
+            "using this image",
+            "use this image",
+            "using the screenshot",
+            "use the screenshot",
+            "using clipboard",
+            "from clipboard"
+        ]
+        return phrases.contains { normalized.contains($0) }
+    }
 }
 
 struct PromptGuideSearchResult: Equatable, Sendable {
@@ -77,6 +96,22 @@ struct PromptGuideIndexSummary: Equatable, Sendable {
     var displayText: String {
         guard !roots.isEmpty else { return "No guide folders selected" }
         return "\(fileCount) guide files, \(ByteCountFormatter.string(fromByteCount: Int64(totalBytes), countStyle: .file)) indexed"
+    }
+}
+
+struct PromptBuilderImageReference: Equatable, Sendable {
+    let mimeType: String
+    let base64Data: String
+    let width: Int
+    let height: Int
+    let byteCount: Int
+
+    var dataURL: String {
+        "data:\(mimeType);base64,\(base64Data)"
+    }
+
+    var displayText: String {
+        "\(width)x\(height), \(ByteCountFormatter.string(fromByteCount: Int64(byteCount), countStyle: .file))"
     }
 }
 

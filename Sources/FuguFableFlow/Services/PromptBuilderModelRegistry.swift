@@ -100,6 +100,15 @@ struct PromptBuilderModelRegistry: Sendable {
             priority: 1
         ),
         PromptBuilderModelProfile(
+            id: "flux-1-dev",
+            displayName: "Flux.1 Dev",
+            aliases: ["flux 1 dev", "flux.1 dev", "flux one dev", "flux dev", "flux1 dev", "flux 1"],
+            modalities: [.image],
+            guidePathHints: ["flux-1-dev", "flux.1-dev", "flux"],
+            isOpenWeights: true,
+            priority: 0
+        ),
+        PromptBuilderModelProfile(
             id: "flux",
             displayName: "Flux",
             aliases: ["flux", "flux 2", "flux.2", "flux max", "flux dev", "flux schnell"],
@@ -107,6 +116,33 @@ struct PromptBuilderModelRegistry: Sendable {
             guidePathHints: ["Flux", "flux"],
             isOpenWeights: true,
             priority: 1
+        ),
+        PromptBuilderModelProfile(
+            id: "flux-2-klein",
+            displayName: "Flux.2 Klein",
+            aliases: ["flux 2 klein", "flux.2 klein", "flux2 klein", "flux klein", "flux two klein"],
+            modalities: [.image],
+            guidePathHints: ["flux-2-klein", "flux.2-klein", "flux"],
+            isOpenWeights: true,
+            priority: 0
+        ),
+        PromptBuilderModelProfile(
+            id: "krea-2",
+            displayName: "Krea 2",
+            aliases: ["krea", "krea 2", "krea two", "krea turbo", "krea 2 turbo"],
+            modalities: [.image],
+            guidePathHints: ["krea-2", "krea"],
+            isOpenWeights: true,
+            priority: 1
+        ),
+        PromptBuilderModelProfile(
+            id: "z-image-turbo",
+            displayName: "Z-Image Turbo",
+            aliases: ["z image turbo", "z-image turbo", "zimage turbo", "z image", "z-image", "zimage"],
+            modalities: [.image],
+            guidePathHints: ["z-image-turbo", "z-image", "zimage"],
+            isOpenWeights: true,
+            priority: 0
         ),
         PromptBuilderModelProfile(
             id: "qwen-image",
@@ -125,6 +161,15 @@ struct PromptBuilderModelRegistry: Sendable {
             guidePathHints: ["suno", "Audio & TTS"],
             isOpenWeights: false,
             priority: 1
+        ),
+        PromptBuilderModelProfile(
+            id: "ace-step-1.5",
+            displayName: "ACE-Step 1.5",
+            aliases: ["ace step", "ace-step", "ace step 1.5", "ace-step 1.5", "ace music"],
+            modalities: [.music],
+            guidePathHints: ["ace-step", "ace step", "Audio & TTS"],
+            isOpenWeights: true,
+            priority: 0
         ),
         PromptBuilderModelProfile(
             id: "veo-3.1",

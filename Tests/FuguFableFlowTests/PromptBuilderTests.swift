@@ -21,6 +21,50 @@ final class PromptBuilderTests: XCTestCase {
         XCTAssertEqual(command.task, .imageToVideo)
     }
 
+    func testParserFindsKreaTwoAlias() {
+        let command = PromptBuilderCommandParser().parse(
+            "Turn this into a strong Krea 2 image prompt using the clipboard image"
+        )
+
+        XCTAssertEqual(command.targetModel?.id, "krea-2")
+        XCTAssertEqual(command.targetModel?.displayName, "Krea 2")
+        XCTAssertEqual(command.task, .textToImage)
+    }
+
+    func testParserFindsFluxDevAndFluxKleinAliases() {
+        let fluxDevCommand = PromptBuilderCommandParser().parse(
+            "Turn this into a cinematic image prompt for Flux.1 Dev"
+        )
+        let fluxKleinCommand = PromptBuilderCommandParser().parse(
+            "Turn this into a fast neon image prompt for Flux.2 Klein"
+        )
+
+        XCTAssertEqual(fluxDevCommand.targetModel?.id, "flux-1-dev")
+        XCTAssertEqual(fluxDevCommand.targetModel?.displayName, "Flux.1 Dev")
+        XCTAssertEqual(fluxKleinCommand.targetModel?.id, "flux-2-klein")
+        XCTAssertEqual(fluxKleinCommand.targetModel?.displayName, "Flux.2 Klein")
+    }
+
+    func testParserFindsZImageTurboAlias() {
+        let command = PromptBuilderCommandParser().parse(
+            "Make this a 120 word positive prompt for Z-Image Turbo"
+        )
+
+        XCTAssertEqual(command.targetModel?.id, "z-image-turbo")
+        XCTAssertEqual(command.targetModel?.displayName, "Z-Image Turbo")
+        XCTAssertEqual(command.task, .generic)
+    }
+
+    func testParserFindsACEWorkflowAlias() {
+        let command = PromptBuilderCommandParser().parse(
+            "Turn this into an ACE-Step music prompt with local model constraints"
+        )
+
+        XCTAssertEqual(command.targetModel?.id, "ace-step-1.5")
+        XCTAssertEqual(command.targetModel?.displayName, "ACE-Step 1.5")
+        XCTAssertEqual(command.task, .textToMusic)
+    }
+
     func testGuideSearchSkipsMediaAndOversizedFiles() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -113,9 +157,106 @@ final class PromptBuilderTests: XCTestCase {
             weightSummary: nil
         )
 
-        XCTAssertEqual(messages.first?["role"], "system")
-        XCTAssertTrue(messages.first?["content"]?.contains("untrusted reference notes") == true)
-        XCTAssertTrue(messages.last?["content"]?.contains("Target generation model: Flux") == true)
+        XCTAssertEqual(messages.first?["role"] as? String, "system")
+        XCTAssertTrue((messages.first?["content"] as? String)?.contains("untrusted reference notes") == true)
+        XCTAssertTrue((messages.last?["content"] as? String)?.contains("Target generation model: Flux") == true)
+    }
+
+    func testCommandRequestsClipboardImageReferenceOnlyWhenExplicit() {
+        let withImage = PromptBuilderCommandParser().parse(
+            "Turn this into an image to video prompt for Seedance 2 using the clipboard image"
+        )
+        let withoutImage = PromptBuilderCommandParser().parse(
+            "Turn this into an image to video prompt for Seedance 2"
+        )
+
+        XCTAssertTrue(withImage.requestsClipboardImageReference)
+        XCTAssertFalse(withoutImage.requestsClipboardImageReference)
+    }
+
+    func testProviderMessagesAttachClipboardImageAsImageURL() {
+        let command = PromptBuilderCommandParser().parse(
+            "Make this an image to video prompt for Seedance 2 using this image"
+        )
+        let image = PromptBuilderImageReference(
+            mimeType: "image/jpeg",
+            base64Data: "abc123",
+            width: 512,
+            height: 384,
+            byteCount: 42
+        )
+
+        let messages = PromptBuilderService.messages(
+            selectedText: "Premium espresso machine.",
+            command: command,
+            guideResults: [],
+            weightSummary: nil,
+            imageReference: image
+        )
+
+        let userContent = messages.last?["content"] as? [[String: Any]]
+        XCTAssertEqual(userContent?.count, 2)
+        XCTAssertEqual(userContent?.first?["type"] as? String, "text")
+        XCTAssertEqual(userContent?.last?["type"] as? String, "image_url")
+        let imageURL = userContent?.last?["image_url"] as? [String: String]
+        XCTAssertEqual(imageURL?["url"], "data:image/jpeg;base64,abc123")
+        XCTAssertEqual(imageURL?["detail"], "low")
+    }
+
+    func testProviderMessageIncludesReferenceSheetGuardrails() {
+        let command = PromptBuilderCommandParser().parse(
+            "Turn this into a strong Krea 2 image prompt using the clipboard image"
+        )
+        let messages = PromptBuilderService.messages(
+            selectedText: "### Reference Sheet Description\nCharacter and props.\n### Target Description\nFinal scene.",
+            command: command,
+            guideResults: [],
+            weightSummary: nil,
+            imageReference: nil
+        )
+
+        let content = messages.last?["content"] as? String
+        XCTAssertTrue(content?.contains("Target generation model: Krea 2") == true)
+        XCTAssertTrue(content?.contains("use the Target Description as the main output goal") == true)
+        XCTAssertTrue(content?.contains("Do not generate a reference-sheet layout") == true)
+        XCTAssertTrue(content?.contains("For Krea 2, prefer one cohesive natural-language paragraph") == true)
+    }
+
+    func testTargetSpecificSystemPromptsAndTemperature() {
+        let kreaCommand = PromptBuilderCommandParser().parse(
+            "Turn this into a strong Krea 2 image prompt"
+        )
+        let ltxCommand = PromptBuilderCommandParser().parse(
+            "Turn this into a strong image to video prompt for LTX 2.3"
+        )
+        let fluxDevCommand = PromptBuilderCommandParser().parse(
+            "Turn this into a strong image prompt for Flux.1 Dev"
+        )
+        let fluxKleinCommand = PromptBuilderCommandParser().parse(
+            "Turn this into a strong image prompt for Flux.2 Klein"
+        )
+        let zImageCommand = PromptBuilderCommandParser().parse(
+            "Turn this into a strong image prompt for Z-Image Turbo"
+        )
+        let seedanceCommand = PromptBuilderCommandParser().parse(
+            "Turn this into a strong Seedance 2 image to video prompt"
+        )
+
+        XCTAssertEqual(PromptBuilderService.temperature(for: kreaCommand), 1.0)
+        XCTAssertEqual(PromptBuilderService.temperature(for: seedanceCommand), 0.35)
+        XCTAssertTrue(PromptBuilderService.systemPrompt(for: kreaCommand).contains("expert prompt engineer for text-to-image models"))
+        XCTAssertTrue(PromptBuilderService.systemPrompt(for: kreaCommand).contains("Then output a single expanded prompt paragraph"))
+        XCTAssertTrue(PromptBuilderService.systemPrompt(for: seedanceCommand).contains("Seedance 2.0 scene direction API"))
+        XCTAssertTrue(PromptBuilderService.systemPrompt(for: seedanceCommand).contains("single-line JSON array"))
+        XCTAssertTrue(PromptBuilderService.systemPrompt(for: ltxCommand).contains("LTX2PromptArchitect"))
+        XCTAssertTrue(PromptBuilderService.systemPrompt(for: ltxCommand).contains("Scene 1 [00:00-00:05]"))
+        XCTAssertTrue(PromptBuilderService.systemPrompt(for: fluxDevCommand).contains("FluxPromptArchitect"))
+        XCTAssertTrue(PromptBuilderService.systemPrompt(for: fluxDevCommand).contains("Guidance Scale: 3.5"))
+        XCTAssertTrue(PromptBuilderService.systemPrompt(for: fluxKleinCommand).contains("Flux2KleinPromptArchitect"))
+        XCTAssertTrue(PromptBuilderService.systemPrompt(for: fluxKleinCommand).contains("Variant: [4B for speed or 9B for higher detail]"))
+        XCTAssertTrue(PromptBuilderService.systemPrompt(for: zImageCommand).contains("ZImageTurboPromptArchitect"))
+        XCTAssertTrue(PromptBuilderService.systemPrompt(for: zImageCommand).contains("Guidance Scale: 0.0"))
+        XCTAssertTrue(PromptBuilderService.systemPrompt(for: zImageCommand).contains("80-250 word range"))
     }
 
     func testGuideIndexScansMetadataWithoutReadingMedia() throws {

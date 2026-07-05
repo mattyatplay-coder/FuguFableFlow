@@ -32,10 +32,13 @@ final class DictationStore: ObservableObject {
     @AppStorage("commandModeModel") var commandModeModel = "gpt-4.1-mini"
     @AppStorage("promptBuilderEnabled") var promptBuilderEnabled = true
     @AppStorage("promptBuilderGuideRootsText") var promptBuilderGuideRootsText = ""
+    @AppStorage("promptBuilderRemoteGuidesEnabled") var promptBuilderRemoteGuidesEnabled = true
+    @AppStorage("promptBuilderRemoteGuideRepo") var promptBuilderRemoteGuideRepo = "MikoMurra/FuguFableFlow-Prompt-Guides"
     @AppStorage("promptBuilderIndexOnLaunch") var promptBuilderIndexOnLaunch = false
     @AppStorage("promptBuilderLocalWeightsEnabled") var promptBuilderLocalWeightsEnabled = false
     @AppStorage("promptBuilderWeightRootsText") var promptBuilderWeightRootsText = ""
     @Published private(set) var promptBuilderIndexStatus = "Guide index: Not built"
+    @Published private(set) var promptBuilderRemoteStatus = "Remote guides: Not synced"
     @Published private(set) var promptBuilderWeightStatus = "Local weights: Not scanned"
     @AppStorage("dictationShortcutMode") private var dictationShortcutModeRaw = DictationShortcutMode.rightFunctionRightCommandPushToTalk.rawValue
     @AppStorage("dictationHotKeyCode") private var dictationHotKeyCode = Int(HotKeyShortcut.defaultDictation.keyCode)
@@ -52,6 +55,7 @@ final class DictationStore: ObservableObject {
     private let audioInputDeviceService = AudioInputDeviceService()
     private let mediaDuckingService = MediaDuckingService()
     private let dictationSoundService = DictationSoundService()
+    private let clipboardImageReferenceService = ClipboardImageReferenceService()
     private var speechService: SpeechRecognitionService?
     private var memoryPressureMonitor: MemoryPressureMonitor?
     private var pendingStopTask: Task<Void, Never>?
@@ -236,7 +240,14 @@ final class DictationStore: ObservableObject {
     }
 
     var promptBuilderGuideRoots: [URL] {
-        Self.parseFolderRoots(promptBuilderGuideRootsText)
+        var roots = Self.parseFolderRoots(promptBuilderGuideRootsText)
+        if promptBuilderRemoteGuidesEnabled {
+            let remoteRoot = PromptGuideRemoteSyncService.defaultCacheRoot()
+            if FileManager.default.fileExists(atPath: remoteRoot.path) {
+                roots.append(remoteRoot)
+            }
+        }
+        return roots
     }
 
     var promptBuilderWeightRoots: [URL] {
@@ -251,7 +262,7 @@ final class DictationStore: ObservableObject {
 
     func clearPromptGuideFolders() {
         promptBuilderGuideRootsText = ""
-        promptBuilderIndexStatus = "Guide index: No guide folders selected"
+        refreshPromptBuilderStatuses()
     }
 
     func rebuildPromptGuideIndex() {
@@ -273,6 +284,23 @@ final class DictationStore: ObservableObject {
             } catch {
                 await MainActor.run {
                     self.promptBuilderIndexStatus = "Guide index failed: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
+    func syncRemotePromptGuides() {
+        promptBuilderRemoteStatus = "Remote guides: Syncing"
+        Task {
+            do {
+                let summary = try await PromptGuideRemoteSyncService().sync(repo: self.promptBuilderRemoteGuideRepo)
+                await MainActor.run {
+                    self.promptBuilderRemoteStatus = summary.displayText
+                    self.rebuildPromptGuideIndex()
+                }
+            } catch {
+                await MainActor.run {
+                    self.promptBuilderRemoteStatus = "Remote guides failed: \(error.localizedDescription)"
                 }
             }
         }
@@ -569,13 +597,21 @@ final class DictationStore: ObservableObject {
                     let weightSummary = promptBuilderLocalWeightsEnabled
                         ? try? PromptModelWeightScanner().scan(roots: promptBuilderWeightRoots)
                         : nil
+                    let imageReference: PromptBuilderImageReference?
+                    if promptBuilderCommand.requestsClipboardImageReference {
+                        imageReference = try clipboardImageReferenceService.imageReferenceFromClipboard()
+                        DiagnosticLog.app.info("promptBuilder clipboardImage bytes=\(imageReference?.byteCount ?? 0, privacy: .public)")
+                    } else {
+                        imageReference = nil
+                    }
                     let service = PromptBuilderService(
                         provider: commandModeProvider,
                         apiKey: commandModeAPIKey,
                         model: commandModeModel,
                         guideRoots: promptBuilderGuideRoots,
                         localWeightsEnabled: promptBuilderLocalWeightsEnabled,
-                        weightSummary: weightSummary
+                        weightSummary: weightSummary,
+                        imageReference: imageReference
                     )
                     transformed = try await service.build(
                         selectedText: selectedText,
@@ -741,6 +777,12 @@ final class DictationStore: ObservableObject {
         promptBuilderIndexStatus = promptBuilderGuideRoots.isEmpty
             ? "Guide index: No guide folders selected"
             : "Guide index: Ready to scan \(promptBuilderGuideRoots.count) folder(s)"
+        let remoteRoot = PromptGuideRemoteSyncService.defaultCacheRoot()
+        if FileManager.default.fileExists(atPath: remoteRoot.path) {
+            promptBuilderRemoteStatus = "Remote guides: Cached"
+        } else {
+            promptBuilderRemoteStatus = "Remote guides: Not synced"
+        }
         promptBuilderWeightStatus = promptBuilderWeightRoots.isEmpty
             ? "Local weights: No folders selected"
             : "Local weights: Ready to scan \(promptBuilderWeightRoots.count) folder(s)"

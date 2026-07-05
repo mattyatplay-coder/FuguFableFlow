@@ -156,6 +156,28 @@ struct SettingsView: View {
                     Label("Index Guide Metadata on Launch", systemImage: "list.bullet.rectangle")
                 }
 
+                Toggle(isOn: $store.promptBuilderRemoteGuidesEnabled) {
+                    Label("Use Hugging Face Guide Cache", systemImage: "icloud.and.arrow.down")
+                }
+
+                TextField("HF Dataset repo, e.g. username/FuguFableFlow-Prompt-Guides", text: $store.promptBuilderRemoteGuideRepo)
+                    .textFieldStyle(.roundedBorder)
+                    .disabled(!store.promptBuilderRemoteGuidesEnabled)
+
+                HStack {
+                    Button {
+                        store.syncRemotePromptGuides()
+                    } label: {
+                        Label("Sync Remote Guides", systemImage: "arrow.down.doc")
+                    }
+                    .disabled(!store.promptBuilderRemoteGuidesEnabled)
+
+                    Text(store.promptBuilderRemoteStatus)
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+                }
+
                 TextEditor(text: $store.promptBuilderGuideRootsText)
                     .font(.body.monospaced())
                     .frame(minHeight: 72)
@@ -185,7 +207,7 @@ struct SettingsView: View {
             } header: {
                 Text("Prompt Builder")
             } footer: {
-                Text("Guide indexing stores only lightweight file metadata. Prompt Builder reads capped text snippets on demand and skips media files and oversized documents.")
+                Text("Remote guide sync downloads only manifest-listed Markdown guides into Application Support, then Prompt Builder reads capped snippets on demand. Local folders are optional authoring or private guide roots. Say clipboard image, reference image, or screenshot to attach the copied image to a vision-capable provider.")
             }
 
             Section {
