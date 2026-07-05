@@ -6,23 +6,22 @@ enum MemoryPressureLevel {
     case critical
 }
 
-@MainActor
 final class MemoryPressureMonitor {
     private var source: DispatchSourceMemoryPressure?
-    private let handler: (MemoryPressureLevel) -> Void
+    private let handler: @MainActor @Sendable (MemoryPressureLevel) -> Void
 
-    init(handler: @escaping (MemoryPressureLevel) -> Void) {
+    init(handler: @escaping @MainActor @Sendable (MemoryPressureLevel) -> Void) {
         self.handler = handler
         let queue = DispatchQueue(label: "app.fugufableflow.memory-pressure")
         let source = DispatchSource.makeMemoryPressureSource(
             eventMask: [.warning, .critical],
             queue: queue
         )
-        source.setEventHandler { [weak self, weak source] in
+        source.setEventHandler { [weak source, handler] in
             guard let event = source?.data else { return }
             let level: MemoryPressureLevel = event.contains(.critical) ? .critical : .warning
             Task { @MainActor in
-                self?.handler(level)
+                handler(level)
             }
         }
         source.resume()
