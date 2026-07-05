@@ -4,9 +4,9 @@ set -euo pipefail
 MODE="${1:-run}"
 APP_NAME="${FUGUFABLEFLOW_APP_NAME:-FuguFableFlow}"
 EXECUTABLE_NAME="FuguFableFlow"
-BUNDLE_ID="${FUGUFABLEFLOW_BUNDLE_ID:-app.fugufableflow.local}"
+BUNDLE_ID="${FUGUFABLEFLOW_BUNDLE_ID:-app.fugufableflow}"
 MIN_SYSTEM_VERSION="14.0"
-SIGN_IDENTITY="${FUGUFABLEFLOW_CODESIGN_IDENTITY:--}"
+SIGN_IDENTITY="${FUGUFABLEFLOW_CODESIGN_IDENTITY:-}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
@@ -18,6 +18,12 @@ APP_BINARY="$APP_MACOS/$EXECUTABLE_NAME"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
 ICON_FILE="FuguFableFlow.icns"
 MENU_BAR_ICON_FILE="FuguFableFlow.png"
+INSTALLED_APP="/Applications/$APP_NAME.app"
+
+if [[ -z "$SIGN_IDENTITY" ]]; then
+  SIGN_IDENTITY="$(/usr/bin/security find-identity -v -p codesigning 2>/dev/null | /usr/bin/awk -F '"' '/"/ { print $2; exit }')"
+fi
+SIGN_IDENTITY="${SIGN_IDENTITY:--}"
 
 pkill -x "$EXECUTABLE_NAME" >/dev/null 2>&1 || true
 pkill -x "PersonalFlow" >/dev/null 2>&1 || true
@@ -70,7 +76,7 @@ cat >"$INFO_PLIST" <<PLIST
 </plist>
 PLIST
 
-if [[ "$SIGN_IDENTITY" != "-" ]] && /usr/bin/security find-identity -v -p codesigning | /usr/bin/grep -Fq "$SIGN_IDENTITY"; then
+if [[ "$SIGN_IDENTITY" != "-" ]]; then
   /usr/bin/codesign --force --deep --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
 else
   /usr/bin/codesign --force --deep --sign - "$APP_BUNDLE"
@@ -78,6 +84,13 @@ fi
 
 open_app() {
   /usr/bin/open -n "$APP_BUNDLE"
+}
+
+install_app() {
+  rm -rf "$INSTALLED_APP"
+  /usr/bin/ditto "$APP_BUNDLE" "$INSTALLED_APP"
+  /usr/bin/xattr -dr com.apple.quarantine "$INSTALLED_APP" >/dev/null 2>&1 || true
+  /usr/bin/open -n "$INSTALLED_APP"
 }
 
 case "$MODE" in
@@ -100,8 +113,11 @@ case "$MODE" in
     sleep 1
     pgrep -x "$EXECUTABLE_NAME" >/dev/null
     ;;
+  --install|install)
+    install_app
+    ;;
   *)
-    echo "usage: $0 [run|--debug|--logs|--telemetry|--verify]" >&2
+    echo "usage: $0 [run|--debug|--logs|--telemetry|--verify|--install]" >&2
     exit 2
     ;;
 esac

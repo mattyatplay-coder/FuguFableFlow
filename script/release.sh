@@ -8,7 +8,7 @@ APP_NAME="FuguFableFlow"
 EXECUTABLE_NAME="FuguFableFlow"
 BUNDLE_ID="app.fugufableflow"
 MIN_SYSTEM_VERSION="14.0"
-SIGN_IDENTITY="${FUGUFABLEFLOW_CODESIGN_IDENTITY:--}"
+SIGN_IDENTITY="${FUGUFABLEFLOW_CODESIGN_IDENTITY:-}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
@@ -19,6 +19,11 @@ APP_RESOURCES="$APP_CONTENTS/Resources"
 APP_BINARY="$APP_MACOS/$EXECUTABLE_NAME"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
 ZIP_PATH="$DIST_DIR/$APP_NAME-$VERSION.zip"
+
+if [[ -z "$SIGN_IDENTITY" ]]; then
+  SIGN_IDENTITY="$(/usr/bin/security find-identity -v -p codesigning 2>/dev/null | /usr/bin/awk -F '"' '/"/ { print $2; exit }')"
+fi
+SIGN_IDENTITY="${SIGN_IDENTITY:--}"
 
 echo "==> Building universal release binary (arm64 + x86_64)"
 swift build -c release --arch arm64 --arch x86_64 --package-path "$ROOT_DIR"

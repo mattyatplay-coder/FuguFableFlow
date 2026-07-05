@@ -24,6 +24,11 @@ let package = Package(
                 .linkedFramework("Speech"),
                 .linkedFramework("SwiftUI")
             ]
+        ),
+        .testTarget(
+            name: "FuguFableFlowTests",
+            dependencies: ["FuguFableFlow"],
+            path: "Tests/FuguFableFlowTests"
         )
     ]
 )

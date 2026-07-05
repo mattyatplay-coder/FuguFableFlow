@@ -84,4 +84,17 @@ enum CommandModeProvider: String, CaseIterable, Identifiable {
             "llama3.2:3b"
         }
     }
+
+    var chatCompletionsURL: URL {
+        switch self {
+        case .openRouter:
+            URL(string: "https://openrouter.ai/api/v1/chat/completions")!
+        case .huggingFace:
+            URL(string: "https://router.huggingface.co/v1/chat/completions")!
+        case .openAI:
+            URL(string: "https://api.openai.com/v1/chat/completions")!
+        case .off, .ollama:
+            preconditionFailure("Provider does not use hosted chat completions")
+        }
+    }
 }

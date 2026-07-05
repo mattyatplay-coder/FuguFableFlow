@@ -41,6 +41,7 @@ That's the whole product. The rest is polish:
 - A custom dictionary, so it stops guessing "Kubernetes" as "cubanetics."
 - Coding command mode — "new line," "open paren," "fat arrow," "press enter."
 - Optional Command Mode for AI text transforms (off by default; more on that below).
+- Optional Prompt Builder for turning rough voice notes into model-aware image, video, speech, or music prompts.
 - Optional music muting for Music, Spotify, and Spotify tabs in Chrome.
 - Configurable start/stop tones and notification volume.
 
@@ -95,7 +96,7 @@ cd FuguFableFlow
 ./script/build_and_run.sh
 ```
 
-The script builds a signed local app bundle at `dist/FuguFableFlow.app` using ad-hoc signing by default.
+The script builds a signed local app bundle at `dist/FuguFableFlow.app`. If your Mac has an Apple code-signing identity, the script uses it automatically; otherwise it falls back to ad-hoc signing.
 
 To use a real Apple signing identity:
 
@@ -109,6 +110,12 @@ To install manually:
 rm -rf /Applications/FuguFableFlow.app
 ditto dist/FuguFableFlow.app /Applications/FuguFableFlow.app
 open /Applications/FuguFableFlow.app
+```
+
+Or build and install the current checkout in one step:
+
+```bash
+./script/build_and_run.sh --install
 ```
 
 ## Shortcuts
@@ -140,6 +147,27 @@ Hosted providers receive the selected text and your spoken command — nothing e
 
 Local Ollama keeps Command Mode requests on-device, but the Ollama model process runs in its own memory outside FuguFableFlow. If it's using 8 GB, that's Ollama, not this app.
 
+## Prompt Builder (also optional)
+
+Prompt Builder is Command Mode with a little more taste and a lot more model-specific context.
+
+Say something like:
+
+```text
+Turn this into a strong image-to-video prompt for a cinematic product shot, for Seedance 2.
+```
+
+FuguFableFlow will try to figure out:
+
+- what kind of prompt you want — image, video, music, speech, editing, etc.
+- which generation model you named — Seedance, LTX, Wan, Flux, GPT Image, Suno, and friends
+- whether any local Prompt Guide snippets are useful
+- whether to use a hosted provider, local Ollama, or the built-in no-provider template
+
+The memory rule still applies: it does not load your whole prompt-guide library into RAM, and it does not load model weights. Guide folders are scanned as lightweight metadata, then small text snippets are read only when you actually ask for a prompt. Local model-weight folders are filename references only, for people who want the app to know what's available without becoming the thing that runs it.
+
+Hosted Prompt Builder requests send only the selected text, spoken instruction, and capped local guide excerpts to the provider you chose in Command Mode. Provider Off still works; it just uses the local template and skips the paid brain.
+
 ## Permissions, and where macOS hides them
 
 - **Microphone** — obvious.
@@ -147,7 +175,7 @@ Local Ollama keeps Command Mode requests on-device, but the Ollama model process
 - **Accessibility** — required to paste into other apps.
 - **Automation** — only needed if you want music-muting for Music, Spotify, or Chrome.
 
-If paste stops working, it's almost always Accessibility. If you rebuilt or reinstalled an ad-hoc signed copy, macOS treats every rebuild as a new privacy identity even when the app name and bundle ID look identical. Remove the old `FuguFableFlow` entry from **System Settings → Privacy & Security → Accessibility**, add the new `/Applications/FuguFableFlow.app` back, and enable it.
+If paste stops working, it's almost always Accessibility. macOS ties Accessibility trust to the app's code-signing identity and path. If you rebuilt or reinstalled an ad-hoc signed copy, every rebuild becomes a new privacy identity even when the app name and bundle ID look identical. Prefer a real Apple Development or Developer ID signing identity for local builds, then remove the old `FuguFableFlow` entry from **System Settings → Privacy & Security → Accessibility**, add the new `/Applications/FuguFableFlow.app` back, and enable it.
 
 Spotify-in-Chrome muting also needs Chrome's **View → Developer → Allow JavaScript from Apple Events** setting turned on before FuguFableFlow can pause the web player.
 
@@ -156,6 +184,7 @@ Spotify-in-Chrome muting also needs Chrome's **View → Developer → Allow Java
 - No backend. No analytics. No telemetry.
 - Normal dictation uses Apple's Speech framework and follows Apple's speech-recognition behavior for your Mac and OS version.
 - Command Mode is off by default. When on and pointed at a hosted provider, only the selected text and your spoken instruction are sent.
+- Prompt Builder is off-by-default provider-wise too: it reuses your Command Mode provider choice, caps guide snippets, and never uploads model weights.
 - Local Ollama keeps Command Mode requests local.
 - No transcript history is stored in the app.
 - Settings live in local macOS preferences. Provider keys live in Keychain.

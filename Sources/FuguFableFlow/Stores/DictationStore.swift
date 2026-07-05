@@ -30,6 +30,13 @@ final class DictationStore: ObservableObject {
     @AppStorage("pressEnterVoiceCommandEnabled") var pressEnterVoiceCommandEnabled = true
     @AppStorage("commandModeProvider") private var commandModeProviderRaw = CommandModeProvider.off.rawValue
     @AppStorage("commandModeModel") var commandModeModel = "gpt-4.1-mini"
+    @AppStorage("promptBuilderEnabled") var promptBuilderEnabled = true
+    @AppStorage("promptBuilderGuideRootsText") var promptBuilderGuideRootsText = ""
+    @AppStorage("promptBuilderIndexOnLaunch") var promptBuilderIndexOnLaunch = false
+    @AppStorage("promptBuilderLocalWeightsEnabled") var promptBuilderLocalWeightsEnabled = false
+    @AppStorage("promptBuilderWeightRootsText") var promptBuilderWeightRootsText = ""
+    @Published private(set) var promptBuilderIndexStatus = "Guide index: Not built"
+    @Published private(set) var promptBuilderWeightStatus = "Local weights: Not scanned"
     @AppStorage("dictationShortcutMode") private var dictationShortcutModeRaw = DictationShortcutMode.rightFunctionRightCommandPushToTalk.rawValue
     @AppStorage("dictationHotKeyCode") private var dictationHotKeyCode = Int(HotKeyShortcut.defaultDictation.keyCode)
     @AppStorage("dictationHotKeyModifiers") private var dictationHotKeyModifiers = Int(HotKeyShortcut.defaultDictation.modifiers)
@@ -105,8 +112,12 @@ final class DictationStore: ObservableObject {
         registerDictationShortcut()
         registerCommandModeShortcut()
         refreshAudioInputStatus()
+        refreshPromptBuilderStatuses()
         memoryPressureMonitor = MemoryPressureMonitor { [weak self] level in
             self?.handleMemoryPressure(level)
+        }
+        if promptBuilderIndexOnLaunch {
+            rebuildPromptGuideIndex()
         }
     }
 
@@ -221,6 +232,84 @@ final class DictationStore: ObservableObject {
         }
         set {
             writingStyleRaw = newValue.rawValue
+        }
+    }
+
+    var promptBuilderGuideRoots: [URL] {
+        Self.parseFolderRoots(promptBuilderGuideRootsText)
+    }
+
+    var promptBuilderWeightRoots: [URL] {
+        Self.parseFolderRoots(promptBuilderWeightRootsText)
+    }
+
+    func addPromptGuideFolder() {
+        guard let url = Self.chooseFolder(title: "Choose Prompt Guide Folder") else { return }
+        promptBuilderGuideRootsText = Self.addFolder(url.path, to: promptBuilderGuideRootsText)
+        rebuildPromptGuideIndex()
+    }
+
+    func clearPromptGuideFolders() {
+        promptBuilderGuideRootsText = ""
+        promptBuilderIndexStatus = "Guide index: No guide folders selected"
+    }
+
+    func rebuildPromptGuideIndex() {
+        let roots = promptBuilderGuideRoots
+        guard !roots.isEmpty else {
+            promptBuilderIndexStatus = "Guide index: No guide folders selected"
+            return
+        }
+        promptBuilderIndexStatus = "Guide index: Scanning metadata"
+        Task {
+            do {
+                let summary = try PromptGuideIndexService().index(roots: roots)
+                await MainActor.run {
+                    self.promptBuilderIndexStatus = "Guide index: \(summary.displayText)"
+                    if summary.skippedLargeFiles > 0 {
+                        self.promptBuilderIndexStatus += ", \(summary.skippedLargeFiles) large skipped"
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.promptBuilderIndexStatus = "Guide index failed: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
+    func addModelWeightFolder() {
+        guard let url = Self.chooseFolder(title: "Choose Local Model Weight Folder") else { return }
+        promptBuilderWeightRootsText = Self.addFolder(url.path, to: promptBuilderWeightRootsText)
+        scanLocalModelWeights()
+    }
+
+    func clearModelWeightFolders() {
+        promptBuilderWeightRootsText = ""
+        promptBuilderWeightStatus = "Local weights: No folders selected"
+    }
+
+    func scanLocalModelWeights() {
+        let roots = promptBuilderWeightRoots
+        guard !roots.isEmpty else {
+            promptBuilderWeightStatus = "Local weights: No folders selected"
+            return
+        }
+        promptBuilderWeightStatus = "Local weights: Scanning filenames"
+        Task {
+            do {
+                let summary = try PromptModelWeightScanner().scan(roots: roots)
+                await MainActor.run {
+                    self.promptBuilderWeightStatus = "Local weights: \(summary.displayText)"
+                    if !summary.extensions.isEmpty {
+                        self.promptBuilderWeightStatus += " (\(summary.extensions.joined(separator: ", ")))"
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.promptBuilderWeightStatus = "Local weight scan failed: \(error.localizedDescription)"
+                }
+            }
         }
     }
 
@@ -472,16 +561,38 @@ final class DictationStore: ObservableObject {
             do {
                 DiagnosticLog.app.info("commandMode captureSelectedText begin")
                 let selectedText = await textInsertionService.captureSelectedText()
-                DiagnosticLog.app.info("commandMode transform begin provider=\(self.commandModeProvider.rawValue, privacy: .public) model=\(self.commandModeModel, privacy: .public) selectedLength=\(selectedText.count, privacy: .public) commandLength=\(text.count, privacy: .public)")
-                let service = CommandTransformService(
-                    provider: commandModeProvider,
-                    apiKey: commandModeAPIKey,
-                    model: commandModeModel
-                )
-                let transformed = try await service.transform(
-                    selectedText: selectedText,
-                    command: text
-                )
+                let promptBuilderCommand = PromptBuilderCommandParser().parse(text)
+                let transformed: String
+                if promptBuilderEnabled && promptBuilderCommand.isPromptBuilderRequest {
+                    statusText = "Prompt Builder processing"
+                    DiagnosticLog.app.info("promptBuilder begin provider=\(self.commandModeProvider.rawValue, privacy: .public) model=\(self.commandModeModel, privacy: .public) selectedLength=\(selectedText.count, privacy: .public) commandLength=\(text.count, privacy: .public)")
+                    let weightSummary = promptBuilderLocalWeightsEnabled
+                        ? try? PromptModelWeightScanner().scan(roots: promptBuilderWeightRoots)
+                        : nil
+                    let service = PromptBuilderService(
+                        provider: commandModeProvider,
+                        apiKey: commandModeAPIKey,
+                        model: commandModeModel,
+                        guideRoots: promptBuilderGuideRoots,
+                        localWeightsEnabled: promptBuilderLocalWeightsEnabled,
+                        weightSummary: weightSummary
+                    )
+                    transformed = try await service.build(
+                        selectedText: selectedText,
+                        command: promptBuilderCommand
+                    )
+                } else {
+                    DiagnosticLog.app.info("commandMode transform begin provider=\(self.commandModeProvider.rawValue, privacy: .public) model=\(self.commandModeModel, privacy: .public) selectedLength=\(selectedText.count, privacy: .public) commandLength=\(text.count, privacy: .public)")
+                    let service = CommandTransformService(
+                        provider: commandModeProvider,
+                        apiKey: commandModeAPIKey,
+                        model: commandModeModel
+                    )
+                    transformed = try await service.transform(
+                        selectedText: selectedText,
+                        command: text
+                    )
+                }
                 guard !transformed.isEmpty else {
                     DiagnosticLog.app.info("commandMode transform empty")
                     statusText = "Command Mode returned no text"
@@ -626,6 +737,15 @@ final class DictationStore: ObservableObject {
         return ""
     }
 
+    private func refreshPromptBuilderStatuses() {
+        promptBuilderIndexStatus = promptBuilderGuideRoots.isEmpty
+            ? "Guide index: No guide folders selected"
+            : "Guide index: Ready to scan \(promptBuilderGuideRoots.count) folder(s)"
+        promptBuilderWeightStatus = promptBuilderWeightRoots.isEmpty
+            ? "Local weights: No folders selected"
+            : "Local weights: Ready to scan \(promptBuilderWeightRoots.count) folder(s)"
+    }
+
     private func speechContextualStrings() -> [String] {
         var terms = customDictionaryTerms
         if recognizeCodingCommands {
@@ -649,6 +769,31 @@ final class DictationStore: ObservableObject {
             .components(separatedBy: CharacterSet(charactersIn: "\n,"))
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
+    }
+
+    private static func parseFolderRoots(_ value: String) -> [URL] {
+        value
+            .components(separatedBy: CharacterSet(charactersIn: "\n"))
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .map { URL(fileURLWithPath: $0, isDirectory: true) }
+    }
+
+    private static func addFolder(_ path: String, to value: String) -> String {
+        var paths = parseFolderRoots(value).map(\.path)
+        guard !paths.contains(path) else { return value }
+        paths.append(path)
+        return paths.joined(separator: "\n")
+    }
+
+    private static func chooseFolder(title: String) -> URL? {
+        let panel = NSOpenPanel()
+        panel.title = title
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = false
+        return panel.runModal() == .OK ? panel.url : nil
     }
 
     private static func parsePressEnterCommand(

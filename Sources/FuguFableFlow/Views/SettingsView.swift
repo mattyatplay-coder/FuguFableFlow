@@ -145,6 +145,90 @@ struct SettingsView: View {
             }
 
             Section {
+                Toggle(isOn: $store.promptBuilderEnabled) {
+                    Label("Model-Aware Prompt Builder", systemImage: "sparkles.rectangle.stack")
+                }
+
+                Text("Uses Command Mode when the spoken instruction looks like a prompt-building request.")
+                    .foregroundStyle(.secondary)
+
+                Toggle(isOn: $store.promptBuilderIndexOnLaunch) {
+                    Label("Index Guide Metadata on Launch", systemImage: "list.bullet.rectangle")
+                }
+
+                TextEditor(text: $store.promptBuilderGuideRootsText)
+                    .font(.body.monospaced())
+                    .frame(minHeight: 72)
+
+                HStack {
+                    Button {
+                        store.addPromptGuideFolder()
+                    } label: {
+                        Label("Add Guide Folder", systemImage: "folder.badge.plus")
+                    }
+
+                    Button {
+                        store.rebuildPromptGuideIndex()
+                    } label: {
+                        Label("Rebuild Index", systemImage: "arrow.clockwise")
+                    }
+
+                    Spacer()
+
+                    Button("Clear") {
+                        store.clearPromptGuideFolders()
+                    }
+                }
+
+                Text(store.promptBuilderIndexStatus)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Prompt Builder")
+            } footer: {
+                Text("Guide indexing stores only lightweight file metadata. Prompt Builder reads capped text snippets on demand and skips media files and oversized documents.")
+            }
+
+            Section {
+                Toggle(isOn: $store.promptBuilderLocalWeightsEnabled) {
+                    Label("Reference Local Model Weights", systemImage: "externaldrive")
+                }
+
+                TextEditor(text: $store.promptBuilderWeightRootsText)
+                    .font(.body.monospaced())
+                    .frame(minHeight: 64)
+                    .disabled(!store.promptBuilderLocalWeightsEnabled)
+
+                HStack {
+                    Button {
+                        store.addModelWeightFolder()
+                    } label: {
+                        Label("Add Weight Folder", systemImage: "folder.badge.plus")
+                    }
+                    .disabled(!store.promptBuilderLocalWeightsEnabled)
+
+                    Button {
+                        store.scanLocalModelWeights()
+                    } label: {
+                        Label("Scan Filenames", systemImage: "magnifyingglass")
+                    }
+                    .disabled(!store.promptBuilderLocalWeightsEnabled)
+
+                    Spacer()
+
+                    Button("Clear") {
+                        store.clearModelWeightFolders()
+                    }
+                }
+
+                Text(store.promptBuilderWeightStatus)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Local Model Weights")
+            } footer: {
+                Text("FuguFableFlow never loads model weights. This only references local GGUF, safetensors, Core ML, or ONNX files so Prompt Builder can mention what you have available. Running local models remains external, for example through Ollama.")
+            }
+
+            Section {
                 TextEditor(text: $store.customDictionaryText)
                     .font(.body.monospaced())
                     .frame(minHeight: 96)
